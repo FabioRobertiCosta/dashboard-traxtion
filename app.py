@@ -19,12 +19,24 @@ def load_data():
     df = pd.read_excel(caminho_arquivo, sheet_name="Base de Dados")
     return df
   else:
-    # Base de dados simulada para exibição segura na nuvem (Cloud)
+    # Base de dados simulada e rica para exibição perfeita na nuvem (Cloud)
     dados_mock = {
-        "Cliente": ["Empresa A", "Empresa B", "Empresa C", "Empresa D"],
-        "Status": ["Concluído", "Em Andamento", "Pendente", "Concluído"],
-        "Demanda": [120, 85, 45, 200],
-        "Valor": [15000, 9500, 4300, 25000],
+        "Cliente": [
+            "Empresa A",
+            "Empresa B",
+            "Empresa C",
+            "Empresa D",
+            "Empresa E",
+        ],
+        "Status": [
+            "Concluído",
+            "Em Andamento",
+            "Pendente",
+            "Concluído",
+            "Em Andamento",
+        ],
+        "Demanda": [120, 85, 45, 200, 95],
+        "Valor": [15000, 9500, 4300, 25000, 11000],
     }
     return pd.DataFrame(dados_mock)
 
@@ -32,12 +44,38 @@ def load_data():
 # Carregando os dados
 df = load_data()
 
+# --- BARRA LATERAL (FILTROS) ---
+st.sidebar.header("🔍 Filtros do Dashboard")
+
+# Filtro de Status (se a coluna existir)
+if "Status" in df.columns:
+  status_disponiveis = df["Status"].unique().tolist()
+  status_selecionados = st.sidebar.multiselect(
+      "Selecione o Status",
+      options=status_disponiveis,
+      default=status_disponiveis,
+  )
+  if status_selecionados:
+    df = df[df["Status"].isin(status_selecionados)]
+
+# Filtro de Cliente (se a coluna existir)
+if "Cliente" in df.columns:
+  clientes_disponiveis = df["Cliente"].unique().tolist()
+  clientes_selecionados = st.sidebar.multiselect(
+      "Selecione o Cliente",
+      options=clientes_disponiveis,
+      default=clientes_disponiveis,
+  )
+  if clientes_selecionados:
+    df = df[df["Cliente"].isin(clientes_selecionados)]
+
+# --- TÍTULO PRINCIPAL ---
 st.title("📊 Traxtion - Dashboard Executivo de Demandas")
 st.markdown(
     "Painel interativo para acompanhamento de demandas e métricas estratégicas."
 )
 
-# Exibição de métricas rápidas
+# --- MÉTRICAS EXECUTIVAS ---
 col1, col2, col3 = st.columns(3)
 with col1:
   st.metric(
@@ -55,25 +93,51 @@ with col2:
   else:
     st.metric(label="Métrica Secundária", value="Ativo")
 with col3:
-  st.metric(label="Ambiente", value="Produção (Cloud)")
+  if "Demanda" in df.columns:
+    st.metric(
+        label="Demanda Total",
+        value=f"{df['Demanda'].sum():,.0f}".replace(",", "."),
+    )
+  else:
+    st.metric(label="Ambiente", value="Produção (Cloud)")
 
 st.divider()
 
-# Gráfico de Exemplo com Plotly
-st.subheader("📈 Análise Visual de Demandas")
-if "Cliente" in df.columns and "Demanda" in df.columns:
-  fig = px.bar(
-      df,
-      x="Cliente",
-      y="Demanda",
-      color="Status" if "Status" in df.columns else None,
-      title="Demandas por Cliente",
-      template="plotly_dark",
-  )
-  st.plotly_chart(fig, use_container_width=True)
-else:
-  st.warning("As colunas esperadas não foram encontradas no conjunto de dados.")
+# --- SEÇÃO DE GRÁFICOS (VISUALIZAÇÃO) ---
+col_graf1, col_graf2 = st.columns(2)
 
-# Exibição da tabela detalhada
+with col_graf1:
+  st.subheader("📈 Demandas por Cliente")
+  if "Cliente" in df.columns and "Demanda" in df.columns:
+    fig_bar = px.bar(
+        df,
+        x="Cliente",
+        y="Demanda",
+        color="Status" if "Status" in df.columns else None,
+        title="Volume de Demanda por Cliente",
+        template="plotly_dark",
+    )
+    st.plotly_chart(fig_bar, use_container_width=True)
+  else:
+    st.warning("Colunas necessárias não encontradas para o gráfico de barras.")
+
+with col_graf2:
+  st.subheader("🥧 Distribuição por Status")
+  if "Status" in df.columns and "Demanda" in df.columns:
+    fig_pie = px.pie(
+        df,
+        names="Status",
+        values="Demanda",
+        title="Participação por Status de Demanda",
+        template="plotly_dark",
+        hole=0.4,  # Estilo Donut Chart elegante
+    )
+    st.plotly_chart(fig_pie, use_container_width=True)
+  else:
+    st.warning("Colunas necessárias não encontradas para o gráfico de pizza.")
+
+st.divider()
+
+# --- TABELA DE DADOS ---
 st.subheader("📋 Tabela de Dados Detalhados")
 st.dataframe(df, use_container_width=True)
